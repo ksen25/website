@@ -1,0 +1,503 @@
+<DOCUMENT filename="05.02.26_main.txt">
+<link rel="stylesheet" href="styles.css">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const slider = document.querySelector('.slider');
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.querySelector('.nav-arrow.prev');
+    const nextBtn = document.querySelector('.nav-arrow.next');
+    
+    // Создаем индикаторы динамически (поскольку они не были в HTML)
+    const indicatorsContainer = document.createElement('div');
+    indicatorsContainer.className = 'indicators';
+    slides.forEach((_, index) => {
+        const indicator = document.createElement('div');
+        indicator.className = 'indicator';
+        indicator.setAttribute('data-slide', index);
+        indicatorsContainer.appendChild(indicator);
+    });
+    document.querySelector('.slider-container').appendChild(indicatorsContainer);
+    
+    const indicators = document.querySelectorAll('.indicator');
+    
+    // Описания для каждого слайда с HTML разметкой для ссылок
+    const slideDescriptions = [
+        "ЯКУиПТ",
+        'Часто задаваемые вопросы от <a href="https://puginarug.com/" target="_blank" class="text-link">абитуриентов и студентов</a>',
+        'Выбор профессии - основа <a href="https://sites.edu.yar.ru/sites/ykuipt/abiturientam/index.html" target="_blank" class="text-link">успешного будущего</a>',
+        '<a href="https://sites.edu.yar.ru/sites/ykuipt/bezopasnost.html" target="_blank" class="text-link">Безопасность</a> - приоритет в образовательной среде',
+        '<a href="https://vk.com/search/statuses?c%5Bq%5D=%23ЯКУиПТ&c%5Bper_page%5D=40" target="_blank" class="text-link">#ЯКУиПТ</a>',
+    ];
+    
+    // Создаем overlay для описаний на каждом слайде
+    slides.forEach((slide, index) => {
+        // Создаем контейнер для картинки
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'slide-image-container';
+        
+        // Получаем существующую картинку
+        const img = slide.querySelector('img');
+        
+        // Перемещаем картинку в контейнер
+        if (img) {
+            slide.removeChild(img);
+            imageContainer.appendChild(img);
+            
+            // Создаем overlay для описания только если описание не пустое
+            const description = slideDescriptions[index].trim();
+            if (description && description !== '""' && description !== "''" && description !== ' ') {
+                const overlay = document.createElement('div');
+                overlay.className = 'slide-overlay';
+                overlay.innerHTML = `<div class="slide-description">${slideDescriptions[index]}</div>`;
+                imageContainer.appendChild(overlay);
+            }
+            
+            slide.appendChild(imageContainer);
+        }
+    });
+    
+    let currentSlide = 0;
+    let autoSlideTimeout;
+    const slideCount = slides.length;
+    const slideDuration = 5000;
+    
+    // Функция для переключения слайда
+    function goToSlide(slideIndex) {
+        if (slideIndex >= slideCount) {
+            currentSlide = 0;
+        } else if (slideIndex < 0) {
+            currentSlide = slideCount - 1;
+        } else {
+            currentSlide = slideIndex;
+        }
+        
+        // Перемещение слайдера
+        slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+        
+        // Обновление индикаторов
+        updateIndicators();
+        
+        // Перезапуск автослайдера
+        restartAutoSlide();
+    }
+    
+    // Функция для обновления индикаторов
+    function updateIndicators() {
+        indicators.forEach((indicator, index) => {
+            if (index === currentSlide) {
+                indicator.classList.add('active');
+            } else {
+                indicator.classList.remove('active');
+            }
+        });
+    }
+    
+    // Функция для автоматического перелистывания
+    function startAutoSlide() {
+        clearTimeout(autoSlideTimeout);
+        
+        autoSlideTimeout = setTimeout(() => {
+            goToSlide(currentSlide + 1);
+        }, slideDuration);
+    }
+    
+    // Функция для перезапуска автослайдера
+    function restartAutoSlide() {
+        startAutoSlide();
+    }
+    
+    // Обработчики событий для стрелок
+    prevBtn.addEventListener('click', () => {
+        clearTimeout(autoSlideTimeout);
+        goToSlide(currentSlide - 1);
+    });
+    
+    nextBtn.addEventListener('click', () => {
+        clearTimeout(autoSlideTimeout);
+        goToSlide(currentSlide + 1);
+    });
+    
+    // Обработчики событий для индикаторов
+    indicators.forEach(indicator => {
+        indicator.addEventListener('click', () => {
+            clearTimeout(autoSlideTimeout);
+            const slideIndex = parseInt(indicator.getAttribute('data-slide'));
+            goToSlide(slideIndex);
+        });
+    });
+    
+    // Пауза при наведении
+    const sliderContainer = document.querySelector('.slider-container');
+    sliderContainer.addEventListener('mouseenter', () => {
+        clearTimeout(autoSlideTimeout);
+    });
+    
+    sliderContainer.addEventListener('mouseleave', () => {
+        startAutoSlide();
+    });
+    
+    // Запуск автоматического слайдера
+    startAutoSlide();
+    
+    // Инициализация позиции слайдера
+    slider.style.transform = `translateX(0)`;
+});
+
+// Код для загрузки актуальных новостей - ОБЪЕДИНЕННАЯ ВЕРСИЯ
+document.addEventListener('DOMContentLoaded', function() {
+    async function loadActualNews() {
+        try {
+            const container = document.getElementById('custom-news-container');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading">Загрузка актуальных новостей...</div>';
+            
+            // Сначала пробуем извлечь новости из CMS блока с датами И изображениями
+            let newsData = extractNewsFromCMSBlock();
+            
+            if (newsData.length > 0) {
+                renderNews(container, newsData);
+            } else {
+                // Если не удалось, используем fallback
+                loadFallbackNews(container);
+            }
+            
+        } catch (error) {
+            console.error('Ошибка при загрузке новостей:', error);
+            const container = document.getElementById('custom-news-container');
+            if (container) {
+                loadFallbackNews(container);
+            }
+        }
+    }
+    
+    function extractNewsFromCMSBlock() {
+        // Пытаемся извлечь новости из существующего блока CMS
+        const cmsBlock = document.querySelector('.cms-news-block');
+        if (!cmsBlock) return [];
+        
+        console.log('CMS блок найден:', cmsBlock);
+        
+        // Ищем таблицу или список с новостями
+        const tables = cmsBlock.querySelectorAll('table');
+        const newsData = [];
+        
+        tables.forEach(table => {
+            // Ищем строки таблицы
+            const rows = table.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                // Ищем ссылки на новости в строке
+                const newsLinks = row.querySelectorAll('a[href*="stranitsi_dlya_novostey"]');
+                
+                newsLinks.forEach(link => {
+                    if (newsData.length >= 3) return;
+                    
+                    const title = link.textContent.trim();
+                    const href = link.getAttribute('href');
+                    
+                    if (title && title.length > 10 && href) {
+                        // Пытаемся найти дату в этой же строке
+                        const date = extractDateFromRow(row);
+                        
+                        // ВАЖНО: Используем ваш метод поиска изображений, который работает
+                        let image = getDefaultImage();
+                        const parent = link.closest('div, li, td');
+                        if (parent) {
+                            const img = parent.querySelector('img');
+                            if (img && img.src) {
+                                image = img.src.startsWith('http') ? img.src : `https://sites.edu.yar.ru${img.src}`;
+                            }
+                        }
+                        
+                        newsData.push({
+                            title: title,
+                            link: href.startsWith('http') ? href : `https://sites.edu.yar.ru${href}`,
+                            image: image,
+                            date: date
+                        });
+                    }
+                });
+            });
+        });
+        
+        // Если не нашли в таблицах, ищем в других структурах (ВАША РАБОЧАЯ ВЕРСИЯ)
+        if (newsData.length === 0) {
+            const newsLinks = cmsBlock.querySelectorAll('a[href*="stranitsi_dlya_novostey"]');
+            
+            newsLinks.forEach((link, index) => {
+                if (index >= 3) return;
+                
+                const title = link.textContent.trim();
+                const href = link.getAttribute('href');
+                
+                if (title && title.length > 10 && href) {
+                    // Пытаемся найти дату рядом со ссылкой
+                    const date = findDateNearElement(link);
+                    
+                    // ВАЖНО: Используем ваш метод поиска изображений
+                    let image = getDefaultImage();
+                    const parent = link.closest('div, li, td');
+                    if (parent) {
+                        const img = parent.querySelector('img');
+                        if (img && img.src) {
+                            image = img.src.startsWith('http') ? img.src : `https://sites.edu.yar.ru${img.src}`;
+                        }
+                    }
+                    
+                    newsData.push({
+                        title: title,
+                        link: href.startsWith('http') ? href : `https://sites.edu.yar.ru${href}`,
+                        image: image,
+                        date: date
+                    });
+                }
+            });
+        }
+        
+        return newsData.slice(0, 3);
+    }
+    
+    function extractDateFromRow(row) {
+        // Ищем все ячейки в строке
+        const cells = row.querySelectorAll('td, th');
+        
+        for (let cell of cells) {
+            const text = cell.textContent.trim();
+            
+            // Ищем дату в формате DD.MM.YYYY
+            const dateMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (dateMatch) {
+                const day = dateMatch[1].padStart(2, '0');
+                const month = dateMatch[2].padStart(2, '0');
+                const year = dateMatch[3];
+                
+                // Форматируем дату в красивый вид
+                return formatDateToRussian(new Date(year, month - 1, day));
+            }
+            
+            // Ищем дату в формате DD-MM-YYYY
+            const dateMatch2 = text.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);
+            if (dateMatch2) {
+                const day = dateMatch2[1].padStart(2, '0');
+                const month = dateMatch2[2].padStart(2, '0');
+                const year = dateMatch2[3];
+                return formatDateToRussian(new Date(year, month - 1, day));
+            }
+        }
+        
+        return getCurrentDate(); // fallback
+    }
+    
+    function findDateNearElement(element) {
+        // Ищем дату в родительском элементе
+        let parent = element.parentElement;
+        for (let i = 0; i < 3; i++) { // Проверяем 3 уровня вверх
+            if (!parent) break;
+            
+            const text = parent.textContent;
+            const dateMatch = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (dateMatch) {
+                const day = dateMatch[1].padStart(2, '0');
+                const month = dateMatch[2].padStart(2, '0');
+                const year = dateMatch[3];
+                return formatDateToRussian(new Date(year, month - 1, day));
+            }
+            
+            parent = parent.parentElement;
+        }
+        
+        return getCurrentDate(); // fallback
+    }
+    
+    function formatDateToRussian(date) {
+        const months = [
+            'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+            'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+        ];
+        
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        
+        return `${day} ${month} ${year}`;
+    }
+    
+    function getDefaultImage() {
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYwIiBoZWlnaHQ9IjIwMiIgdmlld0JveD0iMCAwIDM2MCAyMDIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzNjAiIGhlaWdodD0iMjAyIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjE4MCIgeT0iMTAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNCOEI4QjgiPk5ld3MgSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo=';
+    }
+    
+    function getCurrentDate() {
+        const now = new Date();
+        return formatDateToRussian(now);
+    }
+    
+    function loadFallbackNews(container) {
+        // Статические данные с реальными датами публикации
+        const fallbackNews = [
+            {
+                title: "Разговоры о важном. Что такое уважение?",
+                link: "https://sites.edu.yar.ru/sites/ykuipt/stranitsi_dlya_novostey/news_2025_10_08_13_21.html",
+                image: "https://sites.edu.yar.ru/sites/ykuipt/izobrazheniya_dlya_novostey/annotatsiya_2025-10-07_085933.png",
+                date: "8 октября 2025"
+            },
+            {
+                title: "Форум классных руководителей",
+                link: "https://sites.edu.yar.ru/sites/ykuipt/stranitsi_dlya_novostey/forum_klassnih_rukovoditeley.html",
+                image: "https://sites.edu.yar.ru/sites/ykuipt/izobrazheniya_dlya_novostey/_154_.jpg",
+                date: "5 октября 2025"
+            },
+            {
+                title: "День учителя",
+                link: "https://sites.edu.yar.ru/sites/ykuipt/stranitsi_dlya_novostey/den_uchitelya.html",
+                image: "https://sites.edu.yar.ru/sites/ykuipt/izobrazheniya_dlya_novostey/c8df934f1923a553d8e1_2000x.jpg",
+                date: "2 октября 2025"
+            }
+        ];
+        
+        renderNews(container, fallbackNews);
+    }
+    
+    function renderNews(container, newsData) {
+        const newsHTML = `
+            <div class="custom-news-section">
+                <div class="news-header">
+                    <p class="news-title">
+                        <a href="https://sites.edu.yar.ru/sites/ykuipt/news.html">Новости и события</a>
+                    </p>
+                </div>
+                
+                <div class="news-grid">
+                    ${newsData.map(news => `
+                        <div class="news-item">
+                            <div class="news-image-container">
+                                <a href="${news.link}" target="_blank">
+                                    <img src="${news.image}" alt="${news.title}" class="news-image" 
+                                         onerror="this.src='${getDefaultImage()}'" />
+                                </a>
+                            </div>
+                            <div class="news-content">
+                                <a href="${news.link}" target="_blank">${news.title}</a>
+                                <div class="news-date">${news.date}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = newsHTML;
+    }
+    
+    // Загружаем актуальные новости
+    loadActualNews();
+});
+</script>
+
+<!-- Блок слайдера с меню справа сайта -->
+<div style="display:flex"><!-- Обновленная структура слайдера - убираем отдельный блок описания -->
+<div class="slider-with-description">
+<div class="slider-container">
+<div class="slider">
+<div class="slide"><img alt="в" src="slider/zgkh.png" /> <!-- Контейнер с overlay будет добавлен автоматически через JavaScript --></div>
+
+<div class="slide"><img alt="" src="slider/vopros.jpg" /></div>
+
+<div class="slide"><img alt="" src="slider/vibor.png" /></div>
+
+<div class="slide"><img alt="" src="slider/bezopas.jpg" /></div>
+
+<div class="slide"><img alt="" src="slider/skill.jpg" /></div>
+</div>
+<button class="nav-arrow prev">&lsaquo;</button><button class="nav-arrow next">&rsaquo;</button></div>
+<!-- Убираем старый блок с описанием --></div>
+<!-- Блок меню -->
+
+<div class="right_menu">
+<h1>Сведения об образовательной организации</h1>
+
+<ul class="menu_right_list">
+	<li><a href="https://yakuipt.ru/">Основные сведения</a></li>
+	<li><a href="https://yakuipt.ru/">Структура и органы управления образовательной организацией</a></li>
+	<li><a href="https://yakuipt.ru/">Организация питания в образовательной организации</a></li>
+	<li><a href="https://yakuipt.ru/">Документы</a></li>
+	<li><a href="https://yakuipt.ru/">Образование</a></li>
+	<li><a href="https://yakuipt.ru/">Образовательные стандарты</a></li>
+	<li><a href="https://yakuipt.ru/">Руководство</a></li>
+	<li><a href="https://yakuipt.ru/">Педагогический (научно-педагогический состав)</a></li>
+	<li><a href="https://yakuipt.ru/">Материально-техническое обеспечение и оснащенность образовательного процесса. Доступная среда</a></li>
+	<li><a href="https://yakuipt.ru/">Стипендии и иные виды материальной поддержки</a></li>
+	<li><a href="https://yakuipt.ru/">Вакантные места для приёма (перевода)</a></li>
+	<li><a href="https://yakuipt.ru/">Платные образовательные услуги</a></li>
+	<li><a href="https://yakuipt.ru/">Финансово-хозяйственная деятельность</a></li>
+	<li><a href="https://yakuipt.ru/">Независимая оценка качества условий осуществления образовательной деятельности</a></li>
+	<li><a href="https://yakuipt.ru/">Международное сотрудничество</a></li>
+</ul>
+</div>
+</div>
+<!-- Слово с новостями +меню справа -->
+
+<div style="display:flex"><!-- Приветственное слово с новостями -->
+<div style="display:block; width:90%"><!-- Приветственное слово директора -->
+<div style="color:#222222; line-height:1; width:100%"><img alt="" src="director.jpg" style="border-radius:3px; float:left; height:130px; width:150px" />
+<h2 style="text-align:left">&nbsp;Цветаева Марина Владимировна<br />
+<span class="span_dir">&nbsp; Директор Ярославского колледжа управления и профессиональных технологий</span></h2>
+
+<div class="quote-block">
+<div class="quote-content"><strong>Приветствую вас на сайте Ярославского колледжа управления и профессиональных технологий.</strong>
+
+<p>Наш колледж имеет богатую историю, тесно связанную с развитием лёгкой промышленности России. В 2023 году мы отметили <strong>85-летний юбилей</strong>. За это время колледж выпустил более <strong>20&nbsp;тысяч специалистов</strong>, среди которых &mdash; первая женщина-космонавт <strong>Валентина Владимировна Терешкова</strong>.</p>
+
+<p>Выпускников нашего колледжа всегда отличал высокий уровень подготовки, умение творчески и нестандартно мыслить, достойно принимать профессиональные вызовы. В этом немалая заслуга наших преподавателей &mdash; профессионалов своего дела.</p>
+
+<p>Мы постоянно совершенствуем учебно-материальную базу: создаём новые лаборатории, устанавливаем современное оборудование, что позволяет эффективно организовывать образовательный процесс.</p>
+
+<p>Жизнь наших студентов яркая, насыщенная и многогранная. Они становятся активными участниками и победителями конкурсов, смотров, олимпиад и спортивных соревнований.</p>
+</div>
+
+<div class="quote-signature">Я уверена, что наш колледж станет надёжной платформой для вашего успешного старта!</div>
+</div>
+</div>
+<!-- Новости -->
+
+<div class="cms-news-block"><img src="-component.svg?component_id=newslist&amp;id=1&amp;filter=date&amp;count=5&amp;min=5&amp;max=5&amp;showrss=0&amp;pushnotifications=0" tal:replace="structure component:newslist?id=1&amp;filter=date&amp;count=5&amp;min=5&amp;max=5&amp;showrss=0&amp;pushnotifications=0" title="Лента новостей" /></div>
+
+<div id="custom-news-container" style="width:93%">&nbsp;</div>
+<!-- Фотогалерея -->
+
+<p style="text-align:center">Фотогалерея</p>
+
+<p><img src="-component.svg?component_id=photo&amp;id=%2Ffotogalereya&amp;count=&amp;width=1920&amp;height=1080&amp;sort=name&amp;dir=bottom" tal:replace="structure component:photo?id=%2Ffotogalereya&amp;count=&amp;width=1920&amp;height=1080&amp;sort=name&amp;dir=bottom" title="Свойства компонента" /></p>
+</div>
+<!-- Меню справа -->
+
+<div style="display:block">
+<div class="btn-content"><a class="btn-fixed" href="https://your-payment-link.com"><img alt="" class="btn-icon" src="ikonki/dengi.png" /> <span class="btn-text">Онлайн оплата услуг колледжа</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://sites.edu.yar.ru/sites/ykuipt/studentam/raspisanie_dlya_ochnogo_otd_34.html"><img alt="" class="btn-icon" src="ikonki/vopros.png" /> <span class="btn-text">Вопросы руководителю</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://your-payment-link.com"><img alt="" class="btn-icon" src="ikonki/raspisanie.png" /> <span class="btn-text">Расписание для очного отделения</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://sites.edu.yar.ru/sites/ykuipt/studentam/raspisanie_dlya_ochnogo_otd_34.html"><img alt="" class="btn-icon" src="ikonki/rumc.png" /> <span class="btn-text">Ресурсный учебно-методический центр Ярославской области</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://your-payment-link.com"><img alt="" class="btn-icon" src="ikonki/people.png" /> <span class="btn-text">Стажировочные площадки</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://sites.edu.yar.ru/sites/ykuipt/studentam/raspisanie_dlya_ochnogo_otd_34.html"><img alt="" class="btn-icon" src="ikonki/people.png" /> <span class="btn-text">Базовая площадка</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://your-payment-link.com"><img alt="" class="btn-icon" src="ikonki/moodle.png" /> <span class="btn-text">Система дистанционного обучения Moodle</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://vk.com/ykuipt"><img alt="" class="btn-icon" src="ikonki/vk.png" /> <span class="btn-text">Официальная группа колледжа ВКонтакте</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://your-payment-link.com"><img alt="" class="btn-icon" src="ikonki/jobs.png" /> <span class="btn-text">Вакансии для студентов</span> </a></div>
+
+<div class="btn-content"><a class="btn-fixed" href="https://rutube.ru/channel/7609064/"><img alt="" class="btn-icon" src="ikonki/rutube.png" /> <span class="btn-text">RuTube-канал канал колледжа</span> </a></div>
+</div>
+</div>
+
+<p>&nbsp;<img src="-component.svg?component_id=pos&amp;id=253658&amp;type=sch" tal:replace="structure component:pos?id=253658&amp;type=sch" title="Баннер ПОС" /></p>
+
+<p><img src="-component.svg?component_id=appeals&amp;" tal:replace="structure component:appeals?" title="Свойства компонента" /></p>
+
+<p><img src="-component.svg?component_id=userbanners&amp;type=pobeda80" tal:replace="structure component:userbanners?type=pobeda80" title="Баннеры" /></p>
+</DOCUMENT>
